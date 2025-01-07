@@ -1,0 +1,5 @@
+.venv/
+venv/
+__pycache__/
+realsize.egg-info/
+__init__.py
