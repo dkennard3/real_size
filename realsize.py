@@ -1,5 +1,4 @@
 import os
-import subprocess
 from arg_processor import arg_processor
 from enum import Enum
 from sys import argv, exit
