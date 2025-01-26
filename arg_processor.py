@@ -1,6 +1,9 @@
 from optparse import OptionParser
 def arg_processor():
     parser = OptionParser(usage="usage: realsize.py [options] filepath")
+    parser.add_option("-s", "--no-show-hidden", dest="show_hidden",
+                      action="store_false", default=True,
+                      help="exclude dot-files and hidden files from all summation counts")
     parser.add_option("-n", type="int", default=100000,
                       dest="max_depth", help="how many subdirectories 'deep' you wish to see starting from the given filepath. If unspecified, all subdirectories (and their subdirectories, recursively) are included")
     parser.add_option("-d", "--use_decimal",
