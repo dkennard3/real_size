@@ -33,7 +33,20 @@ def convert_bytes_to_units(bytes, which_unit):
 
 '''
 TODO: 
-    * Add flag option for showing hidden files
+    * consider EDGE_CASE where file has no file extension
+        - split by '.', grab [-1]
+        - if there aren't 2 to 4 chars,
+            - truncate X number of chars off file_name, replace with '...', done.
+
+    * allow flag option for BRIEF output, only showing byte counts but not the tree branches
+
+    * set hard recursion limit to 10+ (tbd) levels
+
+    * adjust wording on [X folders, Y files, Z bytes in total] to be more contextual
+        * (AKA don't print Y files if there are none, say subfolders instead of folders 
+          for all except the starting dir specified by user)
+
+    * try-catch for no-read restrictions in a given folder's permissions
 '''
 
 
@@ -73,16 +86,30 @@ def go_into_directory(dirpath, curr_depth):
                 file_size = os.path.getsize(entry.path)
                 if last_dir_name not in folder_sizes:
                     folder_sizes[last_dir_name] = 0 
+
                 folder_sizes[last_dir_name] += file_size
                 local_byte_size += file_size
-                # relpath = os.path.join(prefix_dir, entry.name)
                 f_size_val, f_size_unit = convert_bytes_to_units(file_size, unit_select).split(" ")
                 shown_name = entry.name
+
+                '''
+                TODO: replace hard-coded 23 value to configurable generic
+                '''
+                # truncation rules for long filenames
                 if len(entry.name) > 23:
-                    chunks = entry.name.split(".")
-                    shown_name = entry.name[:20] + "..." + chunks[-1]
+                    if "." in entry.name:
+                        chunks = entry.name.split(".")
+                        fileExt = chunks[-1]
+
+                        if len(fileExt) >= 2 and len(fileExt) <= 4:
+                            shown_name = entry.name[:20] + "..." + chunks[-1]
+                        else:
+                            shown_name = entry.name[:23] + "..."
+                    else:
+                        shown_name = entry.name[:23] + "..."
+
                 desc_indent = len(curr_indent_space) + len(shown_name)
-                desc_indent_space = ' '*desc_indent
+                # desc_indent_space = ' '*desc_indent
                 print(f"{curr_indent_space}├── {shown_name}{'_'*(40-desc_indent)}--> {f_size_val}{' '*(5-len(f_size_val))} {f_size_unit}")
 
             # "recursive case" for entering subdirectories 
@@ -133,7 +160,6 @@ def main():
         #     pformat = '\n'.join(sorted([f"{' '*15}{desc:<50}" for desc in descriptions], key=lambda x: x.strip().split(' ')[-1].strip().split('=')[-1], reverse=False))
         #     print(pformat)
 
-        # print(f"Total: {convert_bytes_to_units(total_byte_size, unit)}")
         print(f"[{all_folders} folders, {all_files} files, {convert_bytes_to_units(total_byte_size, unit_select)} in total]")
 
     else:
