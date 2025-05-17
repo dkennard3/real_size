@@ -4,12 +4,13 @@ from enum import Enum
 from sys import argv, exit
 
 relative_root = ""
-descriptions = []
+output_lines = []
 max_depth, num_files, all_files = 0, 0, 0
 num_folders, all_folders = -1, 0
 folder_sizes = {}
 unit_select = 0 
 show_hidden = True
+show_count_only = False
 last_dir_name = ""
 entry_indent_length = len('├── ') 
 measurements = [[" B"," KiB"," MiB"," GiB"], [" B"," kB"," MB"," GB"]]
@@ -21,7 +22,7 @@ class Units(Enum):
 def convert_bytes_to_units(bytes, which_unit):
     unit_list = measurements[which_unit]
     i = 0
-    factor = 2**10 if "KiB" in unit_list else 10**3
+    factor = 10**3 if "KB" in unit_list else 2**10
     while i < len(unit_list):
         if bytes < factor:
             return str(round(bytes,1)) + unit_list[i]
@@ -33,10 +34,7 @@ def convert_bytes_to_units(bytes, which_unit):
 
 '''
 TODO: 
-    * consider EDGE_CASE where file has no file extension
-        - split by '.', grab [-1]
-        - if there aren't 2 to 4 chars,
-            - truncate X number of chars off file_name, replace with '...', done.
+    * steal tree's formatting of [XX.XX Kb/Mb/Gb] file/folder name
 
     * allow flag option for BRIEF output, only showing byte counts but not the tree branches
 
@@ -110,7 +108,8 @@ def go_into_directory(dirpath, curr_depth):
 
                 desc_indent = len(curr_indent_space) + len(shown_name)
                 # desc_indent_space = ' '*desc_indent
-                print(f"{curr_indent_space}├── {shown_name}{'_'*(40-desc_indent)}--> {f_size_val}{' '*(5-len(f_size_val))} {f_size_unit}")
+                if not show_count_only:
+                    print(f"{curr_indent_space}├── [{f_size_val}{' '*(5-len(f_size_val))} {f_size_unit}] {shown_name}")
 
             # "recursive case" for entering subdirectories 
             elif entry.is_dir() and last_dir_name != dirpath:
@@ -118,11 +117,11 @@ def go_into_directory(dirpath, curr_depth):
                 num_folders += 1
                 all_folders += 1
                 last_dir_name = entry.name 
-                print(f"{curr_indent_space}├── {entry.name}")
+                if not show_count_only:
+                    print(f"{curr_indent_space}├── {entry.name}")
                 # folder_list.append(f"{entry.name}")
                 subdir_byte_size = go_into_directory(entry.path, curr_depth-1)
                 local_byte_size += subdir_byte_size 
-        # print(f"{curr_indent_space}{' '*4}[{num_folders} folders, {num_files} files" + (f", {convert_bytes_to_units(folder_sizes[last_dir_name], unit_select)} in total]" if num_files > 0 else "]"))
         print(f"{curr_indent_space}{' '*4}[{num_folders} folders, {num_files} files" + (f", {convert_bytes_to_units(local_byte_size, unit_select)} in total]" if num_files > 0 else "]"))
         # print(folder_sizes)
 
@@ -133,7 +132,8 @@ def go_into_directory(dirpath, curr_depth):
 
 def main():
     global relative_root, max_depth, last_dir_name
-    global all_folders, all_files, show_hidden
+    global all_folders, all_files, show_hidden, show_count_only
+    global unit_select, output_lines
     parser = arg_processor()
 
     (options, args) = parser.parse_args()
@@ -144,8 +144,9 @@ def main():
         exit(0)
     root_dir = os.path.abspath(args[0])
     relative_root = os.path.basename(root_dir)
-    unit_select = Units.DECIMAL.value if options.use_decimal else Units.BINARY.value
+    unit_select = Units.BINARY.value if options.use_binary else Units.DECIMAL.value
     show_hidden = options.show_hidden
+    show_count_only = options.show_count_only
 
     if os.path.isfile(root_dir):
         file_size = os.path.getsize(root_dir)
@@ -156,11 +157,7 @@ def main():
         last_dir_name = relative_root
         total_byte_size += go_into_directory(root_dir, options.max_depth)
 
-        # if descriptions:
-        #     pformat = '\n'.join(sorted([f"{' '*15}{desc:<50}" for desc in descriptions], key=lambda x: x.strip().split(' ')[-1].strip().split('=')[-1], reverse=False))
-        #     print(pformat)
-
-        print(f"[{all_folders} folders, {all_files} files, {convert_bytes_to_units(total_byte_size, unit_select)} in total]")
+        output_lines.append(f"[{all_folders} folders, {all_files} files, {convert_bytes_to_units(total_byte_size, unit_select)} in total]")
 
     else:
         print("path does not exist!")
